@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "description": "Release verification: git tag, release, npm, MCP Registry, and GHCR must agree, or NO-GO.",
+  "description": "Release verification for Node and Python: tag, npm, PyPI, Registry, and GHCR must agree, or NO-GO.",
   "name": "io.github.CloudCorpRecords/shipcheck",
   "packages": [
     {
@@ -17,10 +17,10 @@
       "transport": {
         "type": "stdio"
       },
-      "version": "0.1.0"
+      "version": "0.2.0"
     },
     {
-      "identifier": "ghcr.io/cloudcorprecords/shipcheck:0.1.0",
+      "identifier": "ghcr.io/cloudcorprecords/shipcheck:0.2.0",
       "packageArguments": [
         {
           "type": "positional",
@@ -48,5 +48,5 @@
     "source": "github",
     "url": "https://github.com/CloudCorpRecords/shipcheck"
   },
-  "version": "0.1.0"
+  "version": "0.2.0"
 }

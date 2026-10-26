@@ -2,19 +2,22 @@
 /**
  * shipcheck CLI.
  *
- *   shipcheck check owner/repo [version] [--npm pkg] [--server name] [--ghcr image]
- *                        [--require npm,registry,ghcr,release] [--skip ghcr] [--json]
+ *   shipcheck check owner/repo [version] [--npm pkg] [--pypi pkg] [--server name] [--ghcr image]
+ *                        [--require npm,pypi,registry,ghcr,release] [--skip ghcr] [--json]
  *   shipcheck npm @scope/pkg [version] [--json]
+ *   shipcheck pypi pkg [version] [--json]
  *   shipcheck registry io.github.Owner/repo [version] [--json]
  *   shipcheck mcp
  *
  * Exit codes: 0 GO, 1 NO-GO, 2 usage or setup error.
  * GITHUB_TOKEN is optional and only raises GitHub API rate limits.
- * When version is omitted for `check`, it is read from package.json on the
- * default branch. For `npm` / `registry`, it is that surface's latest.
+ * When version is omitted for `check`, it is read from package.json or the
+ * Python metadata (pyproject.toml, setup.cfg, setup.py) on the default
+ * branch. For `npm` / `pypi` / `registry`, it is that surface's latest.
  */
 import {
   checkNpm,
+  checkPypi,
   checkRegistry,
   checkRelease,
   normalizeVersion,
@@ -25,8 +28,9 @@ import type { ShipReport, SurfaceCheck } from "./types.js";
 
 function usage(): never {
   console.error(`Usage:
-  shipcheck check owner/repo [version] [--npm pkg] [--server name] [--ghcr image] [--require list] [--skip list] [--json]
+  shipcheck check owner/repo [version] [--npm pkg] [--pypi pkg] [--server name] [--ghcr image] [--require list] [--skip list] [--json]
   shipcheck npm @scope/pkg [version] [--json]
+  shipcheck pypi pkg [version] [--json]
   shipcheck registry io.github.Owner/repo [version] [--json]
   shipcheck mcp
   shipcheck --version`);
@@ -47,7 +51,7 @@ function positional(args: string[]): string[] {
   for (let i = 0; i < args.length; i++) {
     const a = args[i];
     if (a.startsWith("--")) {
-      if (["--npm", "--server", "--ghcr", "--require", "--skip", "--version"].includes(a)) i++;
+      if (["--npm", "--pypi", "--server", "--ghcr", "--require", "--skip", "--version"].includes(a)) i++;
       continue;
     }
     out.push(a);
@@ -94,6 +98,7 @@ async function main(): Promise<void> {
         v ? v.split(",").map((s) => s.trim()).filter(Boolean) : undefined;
       const report = await checkRelease(fetch, repoRef, version, {
         npmPackage: flag(rest, "--npm"),
+        pypiPackage: flag(rest, "--pypi"),
         serverName: flag(rest, "--server"),
         ghcrImage: flag(rest, "--ghcr"),
         require: split(flag(rest, "--require")),
@@ -108,6 +113,15 @@ async function main(): Promise<void> {
         ? normalizeVersion(posVersion)
         : (probe.latest ?? "");
       const result = posVersion ? probe : await checkNpm(fetch, pkg, version);
+      emit(reportFromChecks(pkg, version, result.checks), has(rest, "--json"));
+    } else if (cmd === "pypi") {
+      const [pkg, posVersion] = positional(rest);
+      if (!pkg) usage();
+      const probe = await checkPypi(fetch, pkg, posVersion ? normalizeVersion(posVersion) : "");
+      const version = posVersion
+        ? normalizeVersion(posVersion)
+        : (probe.latest ?? "");
+      const result = posVersion ? probe : await checkPypi(fetch, pkg, version);
       emit(reportFromChecks(pkg, version, result.checks), has(rest, "--json"));
     } else if (cmd === "registry") {
       const [serverName, posVersion] = positional(rest);
